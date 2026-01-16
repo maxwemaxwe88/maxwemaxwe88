@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OI Screener</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="title">OI Screener</div>
+        <div class="subtitle">Рост открытого интереса по фьючерсам (топ‑контракты)</div>
+      </div>
+      <div class="controls">
+        <label>
+          Окна:
+          <select id="sortBy">
+            <option value="5m" selected>5m</option>
+            <option value="1h">1h</option>
+            <option value="24h">24h</option>
+            <option value="symbol">Symbol</option>
+          </select>
+        </label>
+        <label>
+          Порядок:
+          <select id="order">
+            <option value="desc" selected>Убыв. (рост сверху)</option>
+            <option value="asc">Возр.</option>
+          </select>
+        </label>
+        <label>
+          Лимит:
+          <input id="limit" type="number" min="10" max="200" step="10" value="50" />
+        </label>
+        <button id="refresh">Обновить</button>
+        <span id="status" class="status"></span>
+      </div>
+    </header>
+
+    <main>
+      <div id="grid" class="grid"></div>
+    </main>
+
+    <template id="exchangeCardTemplate">
+      <section class="card">
+        <div class="cardHeader">
+          <div class="exchangeName"></div>
+          <div class="meta"></div>
+        </div>
+        <div class="tableWrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th class="colSymbol">Символ</th>
+                <th class="colPrice">Цена</th>
+                <th class="colOi">OI</th>
+                <th class="colChg">OI 5m</th>
+                <th class="colChg">OI 1h</th>
+                <th class="colChg">OI 24h</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
