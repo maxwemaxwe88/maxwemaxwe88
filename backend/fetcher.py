@@ -16,6 +16,10 @@ class CryptoScreener:
             'okx': ccxt.okx({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
             'bitget': ccxt.bitget({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
             'deribit': ccxt.deribit({'enableRateLimit': True}),
+            'bingx': ccxt.bingx({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
+            'huobi': ccxt.huobi({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}), # HTX
+            'bitmart': ccxt.bitmart({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
+            'hyperliquid': ccxt.hyperliquid({'enableRateLimit': True}),
         }
         self.running = False
 
