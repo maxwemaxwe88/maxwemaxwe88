@@ -10,7 +10,14 @@ from .collector import Collector
 from .config import SETTINGS
 from .db import init_db
 from .exchanges.binance import BinanceUsdM
+from .exchanges.bingx import BingxSwap
+from .exchanges.bitget import BitgetUsdtFutures
 from .exchanges.bybit import BybitLinear
+from .exchanges.gate import GateUsdtFutures
+from .exchanges.htx import HtxUsdtSwap
+from .exchanges.hyperliquid import HyperliquidPerps
+from .exchanges.kucoin import KucoinFutures
+from .exchanges.mexc import MexcPerpetual
 from .exchanges.okx import OkxSwap
 from .http import make_session
 
@@ -19,7 +26,18 @@ def create_app() -> FastAPI:
     app = FastAPI(title="OI Screener", version="0.1.0")
 
     session = make_session(user_agent=SETTINGS.user_agent, timeout_seconds=SETTINGS.http_timeout_seconds)
-    connectors = [BinanceUsdM(session), BybitLinear(session), OkxSwap(session)]
+    connectors = [
+        BinanceUsdM(session),
+        BybitLinear(session),
+        OkxSwap(session),
+        GateUsdtFutures(session),
+        BitgetUsdtFutures(session),
+        KucoinFutures(session),
+        MexcPerpetual(session),
+        BingxSwap(session),
+        HtxUsdtSwap(session),
+        HyperliquidPerps(session),
+    ]
     collector = Collector(db_path=SETTINGS.db_path, connectors=connectors)
 
     @app.on_event("startup")
@@ -43,6 +61,7 @@ def create_app() -> FastAPI:
     # so we use a small override for endpoints that need collector.
     # We expose it via app.state.
     app.state.collector = collector
+    app.state.connectors = connectors
 
     return app
 

@@ -5,6 +5,7 @@
 ## Что уже сделано
 
 - **Сетка “окон”**: в каждом окне отдельная биржа (сейчас: Binance USD‑M, Bybit Linear, OKX SWAP)
+- Добавлены дополнительные биржи (best-effort, публичные API): Gate, Bitget, KuCoin Futures, MEXC, BingX, HTX, Hyperliquid
 - **Сортировка** по изменению OI за выбранное окно (5m/1h/24h)
 - **История** хранится в `sqlite` (для расчёта процентов)
 

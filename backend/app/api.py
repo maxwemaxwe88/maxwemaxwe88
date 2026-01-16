@@ -25,9 +25,15 @@ async def health():
 
 
 @router.get("/exchanges")
-async def exchanges():
-    # Keeping this explicit allows stable UI ordering.
-    return {"exchanges": ["binance", "bybit", "okx"]}
+async def exchanges(request: Request):
+    # UI order = connector order.
+    connectors = getattr(request.app.state, "connectors", None) or []
+    names = []
+    for c in connectors:
+        n = getattr(c, "name", None)
+        if isinstance(n, str):
+            names.append(n)
+    return {"exchanges": names}
 
 
 def _collector_dep(request: Request) -> Collector:
