@@ -9,6 +9,8 @@ from .kucoin import KuCoinExchange
 from .htx import HTXExchange
 from .deribit import DeribitExchange
 from .phemex import PhemexExchange
+from .bingx import BingXExchange
+from .coinex import CoinExExchange
 
 EXCHANGES = {
     "binance": BinanceExchange,
@@ -21,4 +23,6 @@ EXCHANGES = {
     "htx": HTXExchange,
     "deribit": DeribitExchange,
     "phemex": PhemexExchange,
+    "bingx": BingXExchange,
+    "coinex": CoinExExchange,
 }

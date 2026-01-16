@@ -307,14 +307,15 @@ class OIScreener {
                     <span class="panel-count">${data.length} пар</span>
                 </div>
                 <div class="table-container">
-                    ${data.length > 0 ? this.renderTable(data, exchangeName) : '<div class="no-data">Нет данных</div>'}
+                    ${data.length > 0 ? this.renderTable(data, exchangeName, fullSize) : '<div class="no-data">Нет данных</div>'}
                 </div>
             </div>
         `;
     }
     
-    renderTable(data, exchangeName) {
+    renderTable(data, exchangeName, fullView = false) {
         const getSortClass = (field) => this.sortField === field ? 'sorted' : '';
+        const limit = fullView ? 200 : 50;
         
         let html = `
             <table class="oi-table">
@@ -322,6 +323,7 @@ class OIScreener {
                     <tr>
                         <th data-sort="symbol">Символ</th>
                         <th data-sort="price" class="${getSortClass('price')}">Цена</th>
+                        <th data-sort="oi_value" class="${getSortClass('oi_value')}">OI (USD)</th>
                         <th data-sort="oi_change_5m" class="${getSortClass('oi_change_5m')}">OI 5м%</th>
                         <th data-sort="oi_change_1h" class="${getSortClass('oi_change_1h')}">OI 1ч%</th>
                         <th data-sort="oi_change_24h" class="${getSortClass('oi_change_24h')}">OI 24ч%</th>
@@ -330,7 +332,7 @@ class OIScreener {
                 <tbody>
         `;
         
-        for (const item of data.slice(0, 50)) { // Limit to 50 rows per panel
+        for (const item of data.slice(0, limit)) {
             const prevExchangeData = this.previousData[exchangeName] || [];
             const prevItem = prevExchangeData.find(p => p.symbol === item.symbol);
             const isUpdated = prevItem && (
@@ -347,6 +349,7 @@ class OIScreener {
                         </div>
                     </td>
                     <td class="price-cell">${this.formatPrice(item.price)}</td>
+                    <td class="oi-value">${this.formatOI(item.oi_value)}</td>
                     <td><span class="change-cell ${this.getChangeClass(item.oi_change_5m)}">${this.formatPercent(item.oi_change_5m)}</span></td>
                     <td><span class="change-cell ${this.getChangeClass(item.oi_change_1h)}">${this.formatPercent(item.oi_change_1h)}</span></td>
                     <td><span class="change-cell ${this.getChangeClass(item.oi_change_24h)}">${this.formatPercent(item.oi_change_24h)}</span></td>
