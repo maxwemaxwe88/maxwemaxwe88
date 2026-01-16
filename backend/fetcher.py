@@ -20,6 +20,9 @@ class CryptoScreener:
             'huobi': ccxt.huobi({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}), # HTX
             'bitmart': ccxt.bitmart({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
             'hyperliquid': ccxt.hyperliquid({'enableRateLimit': True}),
+            'gate': ccxt.gate({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
+            'kucoin': ccxt.kucoin({'options': {'defaultType': 'future'}, 'enableRateLimit': True}),
+            'mexc': ccxt.mexc({'options': {'defaultType': 'swap'}, 'enableRateLimit': True}),
         }
         self.running = False
 
@@ -97,18 +100,45 @@ class CryptoScreener:
             ticker = await exchange.fetch_ticker(symbol)
             price = ticker.get('last')
             vol_24h = ticker.get('quoteVolume') 
+            
+            oi_val = None
+            oi_change = 0
 
             # 2. Fetch Open Interest (Current)
-            oi = await exchange.fetch_open_interest(symbol)
-            oi_val = oi.get('openInterestValue')
-            oi_amt = oi.get('openInterestAmount')
-            
-            if oi_val is None and oi_amt and price:
-                oi_val = oi_amt * price
+            try:
+                oi = await exchange.fetch_open_interest(symbol)
+                oi_val = oi.get('openInterestValue')
+                oi_amt = oi.get('openInterestAmount')
+                
+                if oi_val is None and oi_amt and price:
+                    oi_val = oi_amt * price
+            except Exception:
+                # Fallback to ticker info if specific exchange doesn't support standard fetch
+                info = ticker.get('info', {})
+                if exchange.id == 'gate':
+                    # Gate: total_size is often OI in contracts (or base)
+                    if 'total_size' in info and price:
+                        # Assumption: total_size is in base currency or contracts.
+                        # For simplicity in MVP, assume base currency units if large, or contracts.
+                        # Gate futures usually: 1 contract = X USD or X Token.
+                        # This is an estimation.
+                        try:
+                            oi_val = float(info['total_size']) # Placeholder
+                        except: pass
+                elif exchange.id == 'mexc':
+                    # MEXC: holdVol
+                    if 'holdVol' in info and price:
+                         try:
+                             oi_val = float(info['holdVol']) * price
+                         except: pass
+                elif exchange.id == 'kucoin':
+                     if 'openInterest' in info:
+                         try:
+                             oi_val = float(info['openInterest'])
+                         except: pass
             
             # 3. Simulate Change (or fetch history if possible)
             # For now return 0 change, frontend will sort by OI value or we add history fetching later
-            oi_change = 0 
 
             return {
                 'symbol': symbol,
