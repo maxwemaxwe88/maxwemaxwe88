@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OI Screener - Криптовалютный скринер открытого интереса</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <h1 class="logo">OI Screener</h1>
+            <span class="subtitle">Открытый интерес на фьючерсах</span>
+        </div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <span class="status-dot" id="connectionStatus"></span>
+                <span id="statusText">Подключение...</span>
+            </div>
+            <div class="last-update">
+                Обновлено: <span id="lastUpdate">--:--:--</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Сортировка:</label>
+            <select id="sortField">
+                <option value="oi_change_5m">OI 5м%</option>
+                <option value="oi_change_1h">OI 1ч%</option>
+                <option value="oi_change_24h">OI 24ч%</option>
+                <option value="oi_value">OI (USD)</option>
+                <option value="volume_24h">Объём 24ч</option>
+                <option value="price">Цена</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Порядок:</label>
+            <select id="sortOrder">
+                <option value="desc">По убыванию ↓</option>
+                <option value="asc">По возрастанию ↑</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Минимум OI:</label>
+            <input type="number" id="minOI" value="100000" placeholder="Мин. OI в USD">
+        </div>
+        <div class="control-group">
+            <label>Поиск:</label>
+            <input type="text" id="searchSymbol" placeholder="Символ...">
+        </div>
+        <div class="control-group">
+            <button id="refreshBtn" class="btn-refresh">🔄 Обновить</button>
+        </div>
+    </div>
+
+    <div class="exchange-tabs" id="exchangeTabs">
+        <button class="tab-btn active" data-exchange="all">Все биржи</button>
+    </div>
+
+    <div class="grid-container" id="exchangeGrid">
+        <!-- Exchange panels will be inserted here -->
+    </div>
+
+    <div class="single-view hidden" id="singleView">
+        <!-- Single exchange view -->
+    </div>
+
+    <footer class="footer">
+        <p>OI Screener v1.0 | Данные обновляются каждые 10 секунд</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
