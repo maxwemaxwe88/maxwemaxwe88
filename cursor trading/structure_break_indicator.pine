@@ -1,4 +1,10 @@
 //@version=5
+// Description:
+// - Marks BOS (break of structure) and CHoCH (change of character) using swing highs/lows.
+// - Swing points are detected with symmetric pivots (left/right = swingLen).
+// - Breaks can be confirmed by close or by wick.
+// - Optional levels and swing markers help visualize the last key swings.
+// - Trend direction flips after a confirmed break to label BOS vs CHoCH.
 indicator("Structure Break (BOS/CHoCH) - Simplified", overlay=true, max_labels_count=500, max_lines_count=500)
 
 swingLen = input.int(3, "Swing length (left/right)", minval=1)
