@@ -1,0 +1,68 @@
+//@version=5
+indicator("Structure Break (BOS/CHoCH) - Simplified", overlay=true, max_labels_count=500, max_lines_count=500)
+
+swingLen = input.int(3, "Swing length (left/right)", minval=1)
+confirmClose = input.bool(true, "Confirm break by close")
+showSwings = input.bool(false, "Show swing points")
+showLevels = input.bool(true, "Show last swing levels")
+showBOS = input.bool(true, "Show BOS labels")
+showCHoCH = input.bool(true, "Show CHoCH labels")
+
+priceHigh = confirmClose ? close : high
+priceLow = confirmClose ? close : low
+
+ph = ta.pivothigh(high, swingLen, swingLen)
+pl = ta.pivotlow(low, swingLen, swingLen)
+
+var float lastSwingHigh = na
+var float lastSwingLow = na
+var int lastSwingHighIndex = na
+var int lastSwingLowIndex = na
+
+var int lastHighBreakIndex = na
+var int lastLowBreakIndex = na
+
+var int trendDir = 0  // 1 = up, -1 = down, 0 = unknown
+
+var line swingHighLine = na
+var line swingLowLine = na
+
+if not na(ph)
+    lastSwingHigh := ph
+    lastSwingHighIndex := bar_index - swingLen
+    if showLevels
+        line.delete(swingHighLine)
+        swingHighLine := line.new(lastSwingHighIndex, lastSwingHigh, bar_index, lastSwingHigh, extend=extend.right, style=line.style_dashed, color=color.new(color.green, 25))
+
+if not na(pl)
+    lastSwingLow := pl
+    lastSwingLowIndex := bar_index - swingLen
+    if showLevels
+        line.delete(swingLowLine)
+        swingLowLine := line.new(lastSwingLowIndex, lastSwingLow, bar_index, lastSwingLow, extend=extend.right, style=line.style_dashed, color=color.new(color.red, 25))
+
+plotshape(showSwings and not na(ph), style=shape.triangledown, location=location.abovebar, offset=-swingLen, size=size.tiny, color=color.new(color.red, 0))
+plotshape(showSwings and not na(pl), style=shape.triangleup, location=location.belowbar, offset=-swingLen, size=size.tiny, color=color.new(color.green, 0))
+
+breakHigh = not na(lastSwingHigh) and bar_index > lastSwingHighIndex and priceHigh > lastSwingHigh and lastHighBreakIndex != lastSwingHighIndex
+breakLow = not na(lastSwingLow) and bar_index > lastSwingLowIndex and priceLow < lastSwingLow and lastLowBreakIndex != lastSwingLowIndex
+
+if breakHigh
+    isChoch = trendDir == -1
+    isBos = trendDir == 1 or trendDir == 0
+    if showBOS and isBos
+        label.new(bar_index, high, "BOS", style=label.style_label_down, textcolor=color.white, color=color.new(color.green, 0))
+    if showCHoCH and isChoch
+        label.new(bar_index, high, "CHoCH", style=label.style_label_down, textcolor=color.white, color=color.new(color.orange, 0))
+    trendDir := 1
+    lastHighBreakIndex := lastSwingHighIndex
+
+if breakLow
+    isChoch = trendDir == 1
+    isBos = trendDir == -1 or trendDir == 0
+    if showBOS and isBos
+        label.new(bar_index, low, "BOS", style=label.style_label_up, textcolor=color.white, color=color.new(color.red, 0))
+    if showCHoCH and isChoch
+        label.new(bar_index, low, "CHoCH", style=label.style_label_up, textcolor=color.white, color=color.new(color.orange, 0))
+    trendDir := -1
+    lastLowBreakIndex := lastSwingLowIndex
