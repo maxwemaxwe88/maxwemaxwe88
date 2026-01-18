@@ -1,0 +1,179 @@
+//@version=6
+// Description:
+// - Marks BOS (break of structure) and CHoCH (change of character) using swing highs/lows.
+// - Draws wave structure (zigzag), swing labels (HH/HL/LH/LL), and range boxes.
+// - Highlights an optional entry zone after a structure break (retracement band).
+// - Breaks can be confirmed by close or by wick.
+indicator("Structure Break (BOS/CHoCH) - Simplified", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=200)
+
+swingLen = input.int(3, "Swing length (left/right)", minval=1)
+confirmClose = input.bool(true, "Confirm break by close")
+showSwings = input.bool(false, "Show swing points")
+showLevels = input.bool(true, "Show last swing levels")
+showBOS = input.bool(true, "Show BOS labels")
+showCHoCH = input.bool(true, "Show CHoCH labels")
+
+showWave = input.bool(true, "Show wave structure")
+showSwingLabels = input.bool(true, "Show HH/HL/LH/LL labels")
+
+showRanges = input.bool(true, "Show consolidation ranges")
+rangeLen = input.int(20, "Range lookback", minval=5)
+rangeAtrLen = input.int(14, "Range ATR length", minval=1)
+rangeAtrMult = input.float(1.0, "Range ATR multiplier", minval=0.1, step=0.1)
+maxRangeBoxes = input.int(20, "Max range boxes", minval=1, maxval=100)
+
+showEntryZone = input.bool(true, "Show entry zone after break")
+entryFib1 = input.float(0.62, "Entry zone fib (upper)", minval=0.1, maxval=0.9, step=0.01)
+entryFib2 = input.float(0.79, "Entry zone fib (lower)", minval=0.1, maxval=0.99, step=0.01)
+entryZoneBars = input.int(50, "Entry zone forward bars", minval=5, maxval=300)
+maxEntryBoxes = input.int(20, "Max entry zones", minval=1, maxval=100)
+
+priceHigh = confirmClose ? close : high
+priceLow = confirmClose ? close : low
+
+fibUpper = math.min(entryFib1, entryFib2)
+fibLower = math.max(entryFib1, entryFib2)
+
+ph = ta.pivothigh(high, swingLen, swingLen)
+pl = ta.pivotlow(low, swingLen, swingLen)
+
+var float lastSwingHigh = na
+var float lastSwingLow = na
+var int lastSwingHighIndex = na
+var int lastSwingLowIndex = na
+
+var float prevSwingHigh = na
+var float prevSwingLow = na
+
+var int lastHighBreakIndex = na
+var int lastLowBreakIndex = na
+
+var int trendDir = 0  // 1 = up, -1 = down, 0 = unknown
+
+var line swingHighLine = na
+var line swingLowLine = na
+
+var float lastPivotPrice = na
+var int lastPivotIndex = na
+var int lastPivotType = 0  // 1 = high, -1 = low, 0 = none
+var line lastWaveLine = na
+var array<line> waveLines = array.new_line()
+
+var array<box> rangeBoxes = array.new_box()
+var box activeRangeBox = na
+var bool inRange = false
+
+var array<box> entryBoxes = array.new_box()
+
+if not na(ph)
+    lastSwingHigh := ph
+    lastSwingHighIndex := bar_index - swingLen
+    if showLevels
+        line.delete(swingHighLine)
+        swingHighLine := line.new(lastSwingHighIndex, lastSwingHigh, bar_index, lastSwingHigh, extend=extend.right, style=line.style_dashed, color=color.new(color.green, 25))
+    if showSwingLabels
+        swingText = na(prevSwingHigh) ? "SH" : ph > prevSwingHigh ? "HH" : ph < prevSwingHigh ? "LH" : "EH"
+        label.new(lastSwingHighIndex, lastSwingHigh, swingText, style=label.style_label_down, textcolor=color.white, color=color.new(color.green, 0))
+    prevSwingHigh := ph
+    if showWave
+        if lastPivotType == 1
+            if na(lastPivotPrice) or ph > lastPivotPrice
+                lastPivotPrice := ph
+                lastPivotIndex := lastSwingHighIndex
+        else
+            if lastPivotType != 0
+                lastWaveLine := line.new(lastPivotIndex, lastPivotPrice, lastSwingHighIndex, ph, color=color.new(color.blue, 0), width=1)
+                array.push(waveLines, lastWaveLine)
+                if array.size(waveLines) > 80
+                    line.delete(array.shift(waveLines))
+            lastPivotType := 1
+            lastPivotPrice := ph
+            lastPivotIndex := lastSwingHighIndex
+
+if not na(pl)
+    lastSwingLow := pl
+    lastSwingLowIndex := bar_index - swingLen
+    if showLevels
+        line.delete(swingLowLine)
+        swingLowLine := line.new(lastSwingLowIndex, lastSwingLow, bar_index, lastSwingLow, extend=extend.right, style=line.style_dashed, color=color.new(color.red, 25))
+    if showSwingLabels
+        swingText = na(prevSwingLow) ? "SL" : pl < prevSwingLow ? "LL" : pl > prevSwingLow ? "HL" : "EL"
+        label.new(lastSwingLowIndex, lastSwingLow, swingText, style=label.style_label_up, textcolor=color.white, color=color.new(color.red, 0))
+    prevSwingLow := pl
+    if showWave
+        if lastPivotType == -1
+            if na(lastPivotPrice) or pl < lastPivotPrice
+                lastPivotPrice := pl
+                lastPivotIndex := lastSwingLowIndex
+        else
+            if lastPivotType != 0
+                lastWaveLine := line.new(lastPivotIndex, lastPivotPrice, lastSwingLowIndex, pl, color=color.new(color.blue, 0), width=1)
+                array.push(waveLines, lastWaveLine)
+                if array.size(waveLines) > 80
+                    line.delete(array.shift(waveLines))
+            lastPivotType := -1
+            lastPivotPrice := pl
+            lastPivotIndex := lastSwingLowIndex
+
+plotshape(showSwings and not na(ph), style=shape.triangledown, location=location.abovebar, offset=-swingLen, size=size.tiny, color=color.new(color.red, 0))
+plotshape(showSwings and not na(pl), style=shape.triangleup, location=location.belowbar, offset=-swingLen, size=size.tiny, color=color.new(color.green, 0))
+
+breakHigh = not na(lastSwingHigh) and bar_index > lastSwingHighIndex and priceHigh > lastSwingHigh and lastHighBreakIndex != lastSwingHighIndex
+breakLow = not na(lastSwingLow) and bar_index > lastSwingLowIndex and priceLow < lastSwingLow and lastLowBreakIndex != lastSwingLowIndex
+
+if breakHigh
+    isChoch = trendDir == -1
+    isBos = trendDir == 1 or trendDir == 0
+    if showBOS and isBos
+        label.new(bar_index, high, "BOS", style=label.style_label_down, textcolor=color.white, color=color.new(color.green, 0))
+    if showCHoCH and isChoch
+        label.new(bar_index, high, "CHoCH", style=label.style_label_down, textcolor=color.white, color=color.new(color.orange, 0))
+    if showEntryZone and not na(lastSwingLow)
+        impulse = priceHigh - lastSwingLow
+        zoneTop = priceHigh - impulse * fibUpper
+        zoneBot = priceHigh - impulse * fibLower
+        newBox = box.new(bar_index, zoneTop, bar_index + entryZoneBars, zoneBot, bgcolor=color.new(color.green, 85), border_color=color.new(color.green, 40))
+        array.push(entryBoxes, newBox)
+        if array.size(entryBoxes) > maxEntryBoxes
+            box.delete(array.shift(entryBoxes))
+    trendDir := 1
+    lastHighBreakIndex := lastSwingHighIndex
+
+if breakLow
+    isChoch = trendDir == 1
+    isBos = trendDir == -1 or trendDir == 0
+    if showBOS and isBos
+        label.new(bar_index, low, "BOS", style=label.style_label_up, textcolor=color.white, color=color.new(color.red, 0))
+    if showCHoCH and isChoch
+        label.new(bar_index, low, "CHoCH", style=label.style_label_up, textcolor=color.white, color=color.new(color.orange, 0))
+    if showEntryZone and not na(lastSwingHigh)
+        impulse = lastSwingHigh - priceLow
+        zoneTop = priceLow + impulse * fibLower
+        zoneBot = priceLow + impulse * fibUpper
+        newBox = box.new(bar_index, zoneTop, bar_index + entryZoneBars, zoneBot, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 40))
+        array.push(entryBoxes, newBox)
+        if array.size(entryBoxes) > maxEntryBoxes
+            box.delete(array.shift(entryBoxes))
+    trendDir := -1
+    lastLowBreakIndex := lastSwingLowIndex
+
+rangeAtr = ta.atr(rangeAtrLen)
+rangeHigh = ta.highest(high, rangeLen)
+rangeLow = ta.lowest(low, rangeLen)
+isRange = (rangeHigh - rangeLow) <= rangeAtr * rangeAtrMult
+
+if showRanges
+    if isRange and not inRange
+        inRange := true
+        leftIndex = bar_index - rangeLen + 1
+        activeRangeBox := box.new(leftIndex, rangeHigh, bar_index, rangeLow, bgcolor=color.new(color.gray, 88), border_color=color.new(color.gray, 50))
+        array.push(rangeBoxes, activeRangeBox)
+        if array.size(rangeBoxes) > maxRangeBoxes
+            box.delete(array.shift(rangeBoxes))
+    if isRange and inRange and not na(activeRangeBox)
+        box.set_right(activeRangeBox, bar_index)
+        box.set_top(activeRangeBox, rangeHigh)
+        box.set_bottom(activeRangeBox, rangeLow)
+    if not isRange and inRange
+        inRange := false
+        activeRangeBox := na
