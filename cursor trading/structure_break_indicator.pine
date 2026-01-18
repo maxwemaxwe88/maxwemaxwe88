@@ -1,16 +1,10 @@
-//@version=5
+//@version=6
 // Description:
 // - Marks BOS (break of structure) and CHoCH (change of character) using swing highs/lows.
 // - Draws wave structure (zigzag), swing labels (HH/HL/LH/LL), and range boxes.
 // - Highlights an optional entry zone after a structure break (retracement band).
 // - Breaks can be confirmed by close or by wick.
-indicator(
-    "Structure Break (BOS/CHoCH) - Simplified",
-    overlay=true,
-    max_labels_count=500,
-    max_lines_count=500,
-    max_boxes_count=200
-)
+indicator("Structure Break (BOS/CHoCH) - Simplified", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=200)
 
 swingLen = input.int(3, "Swing length (left/right)", minval=1)
 confirmClose = input.bool(true, "Confirm break by close")
