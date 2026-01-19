@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import shutil
 import subprocess
+import sys
+from importlib.resources import files
 from typing import Optional
 
 import typer
@@ -104,25 +106,21 @@ def ui(
     """
     Run Streamlit UI (visual client).
     """
-    streamlit = shutil.which("streamlit")
-    if not streamlit:
-        console.print(
-            "[red]streamlit not found[/red]. Install deps first: python3 -m pip install -e ."
-        )
-        raise typer.Exit(code=2)
-
-    # `python -m streamlit` is more portable than relying on console script.
+    # `python -m streamlit` is portable (Windows/macOS/Linux).
+    # Use current interpreter to avoid `python3`/`py` mismatches on Windows.
+    ui_path = files("coinglass_oi_screener").joinpath("ui_streamlit.py")
     cmd = [
-        "python3",
+        sys.executable,
         "-m",
         "streamlit",
         "run",
-        "-q",
-        "src/coinglass_oi_screener/ui_streamlit.py",
+        str(ui_path),
         "--server.address",
         host,
         "--server.port",
         str(port),
+        "--server.headless",
+        "true",
     ]
     raise typer.Exit(code=subprocess.call(cmd))
 
