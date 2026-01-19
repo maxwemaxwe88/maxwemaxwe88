@@ -1,0 +1,22 @@
+[project]
+name = "coinglass-oi-screener"
+version = "0.1.0"
+description = "Open interest screener powered by Coinglass API (FastAPI + CLI)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "httpx>=0.26",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "typer>=0.9",
+  "rich>=13.7",
+  "uvicorn[standard]>=0.27",
+]
+
+[project.scripts]
+coinglass-oi = "coinglass_oi_screener.cli:app"
+
+[tool.ruff]
+line-length = 100
+
