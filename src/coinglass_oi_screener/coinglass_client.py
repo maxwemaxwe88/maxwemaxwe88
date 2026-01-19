@@ -87,12 +87,53 @@ class CoinglassClient:
         Coinglass endpoint naming differs by API version/plan.
         Default path: /openInterestHistory
 
-        Parameters are passed through: symbol, interval, exchange, limit.
+        Coinglass parameter naming differs by API version/plan as well.
+        We try a small set of common variants and return the first successful response.
         """
-        params: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
+        endpoint_candidates = [
+            endpoint_path,
+            # common alternates seen in different Open API versions:
+            "futures/openInterestHistory",
+            "openInterestHistory",
+        ]
+
+        param_candidates: list[dict[str, Any]] = []
+        # Variant A: symbol + exchange
+        p1: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
         if exchange:
-            params["exchange"] = exchange
-        return (await self.get(endpoint_path, params=params)).data
+            p1["exchange"] = exchange
+        param_candidates.append(p1)
+
+        # Variant B: symbol + exchangeName
+        p2: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
+        if exchange:
+            p2["exchangeName"] = exchange
+        param_candidates.append(p2)
+
+        # Variant C: coin + exchange
+        p3: dict[str, Any] = {"coin": symbol, "interval": interval, "limit": limit}
+        if exchange:
+            p3["exchange"] = exchange
+        param_candidates.append(p3)
+
+        # Variant D: coin + exchangeName
+        p4: dict[str, Any] = {"coin": symbol, "interval": interval, "limit": limit}
+        if exchange:
+            p4["exchangeName"] = exchange
+        param_candidates.append(p4)
+
+        last_err: Exception | None = None
+        for ep in endpoint_candidates:
+            for params in param_candidates:
+                try:
+                    return (await self.get(ep, params=params)).data
+                except CoinglassError as e:
+                    last_err = e
+                    continue
+
+        raise CoinglassError(
+            f"Coinglass OI history failed for symbol={symbol} interval={interval} exchange={exchange}: {last_err}"
+        ) from last_err
 
 
 async def gather_limited(
