@@ -10,7 +10,13 @@ class Settings(BaseSettings):
     - Make these configurable because Coinglass header names can vary by plan/version.
     """
 
-    model_config = SettingsConfigDict(env_prefix="COINGLASS_", extra="ignore")
+    # Load from real env vars, and also from local `.env` (gitignored) for convenience.
+    model_config = SettingsConfigDict(
+        env_prefix="COINGLASS_",
+        extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     api_base_url: str = "https://open-api.coinglass.com/public/v2"
     api_key: str | None = None

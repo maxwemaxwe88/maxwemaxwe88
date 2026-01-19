@@ -16,6 +16,12 @@ python -m pip install -e .
 export COINGLASS_API_KEY="YOUR_KEY"
 ```
 
+На Windows/локально удобнее один раз создать файл `.env` рядом с `pyproject.toml` (он уже в `.gitignore`):
+
+```env
+COINGLASS_API_KEY=YOUR_KEY
+```
+
 Если у вашего аккаунта другой заголовок для ключа, можно переопределить:
 
 ```bash
