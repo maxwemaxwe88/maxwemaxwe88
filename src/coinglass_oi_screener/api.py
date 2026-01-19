@@ -22,7 +22,7 @@ async def screener(
     min_change_pct: float | None = Query(None, description="Min OI change %"),
     max_change_pct: float | None = Query(None, description="Max OI change %"),
     limit: int = Query(50, ge=1, le=500),
-    endpoint_path: str = Query("openInterestHistory", description="Override Coinglass endpoint path"),
+    endpoint_path: str = Query("open_interest_history", description="Override Coinglass endpoint path"),
     max_concurrency: int = Query(10, ge=1, le=50),
 ) -> dict:
     sym_list = [s.strip() for s in symbols.split(",") if s.strip()]

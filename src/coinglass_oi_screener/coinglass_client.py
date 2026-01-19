@@ -85,7 +85,7 @@ class CoinglassClient:
         interval: str = "1h",
         exchange: str | None = None,
         limit: int = 50,
-        endpoint_path: str = "openInterestHistory",
+        endpoint_path: str = "open_interest_history",
     ) -> Any:
         """
         Fetch OI history.
@@ -99,8 +99,10 @@ class CoinglassClient:
         endpoint_candidates = [
             endpoint_path,
             # common alternates seen in different Open API versions:
-            "futures/openInterestHistory",
+            "open_interest_history",
             "openInterestHistory",
+            "futures/open_interest_history",
+            "futures/openInterestHistory",
         ]
 
         param_candidates: list[dict[str, Any]] = []

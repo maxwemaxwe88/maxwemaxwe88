@@ -131,7 +131,7 @@ async def screen_open_interest(
     interval: str = "1h",
     exchange: str | None = None,
     limit_points: int = 50,
-    endpoint_path: str = "openInterestHistory",
+    endpoint_path: str = "open_interest_history",
     max_concurrency: int = 10,
 ) -> list[OIChangeRow]:
     sym_list = [s.strip().upper() for s in symbols if s and s.strip()]

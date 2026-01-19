@@ -57,4 +57,5 @@ curl "http://localhost:8000/screener?symbols=BTC,ETH,SOL&interval=1h&limit=20"
 
 ## Примечания
 
-- Эндпоинт Coinglass для истории OI иногда отличается по названию/версии. В CLI/HTTP можно передать `endpoint_path` (по умолчанию `openInterestHistory`).
+- Эндпоинт Coinglass для истории OI иногда отличается по названию/версии. В CLI/HTTP можно передать `endpoint_path` (по умолчанию `open_interest_history`).
+- По факту у Coinglass есть “рабочий” вариант snake_case: `open_interest_history` (в некоторых окружениях `openInterestHistory` возвращает 500).

@@ -71,7 +71,7 @@ def main() -> None:
     with st.sidebar:
         st.subheader("Общие параметры")
         symbols_raw = st.text_input("Symbols (через запятую)", value="BTC,ETH,SOL")
-        endpoint_path = st.text_input("Endpoint path", value="openInterestHistory")
+        endpoint_path = st.text_input("Endpoint path", value="open_interest_history")
         max_concurrency = st.slider("Concurrency", min_value=1, max_value=50, value=10)
         top_n = st.slider("Rows per window", min_value=5, max_value=200, value=30)
         run_all = st.button("Run all windows", type="primary")

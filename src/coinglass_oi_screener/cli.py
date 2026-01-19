@@ -50,7 +50,7 @@ def screen(
     min_change_pct: Optional[float] = typer.Option(None, help="Min OI change % filter"),
     max_change_pct: Optional[float] = typer.Option(None, help="Max OI change % filter"),
     limit: int = typer.Option(50, help="Limit rows after sorting"),
-    endpoint_path: str = typer.Option("openInterestHistory", help="Override Coinglass endpoint path"),
+    endpoint_path: str = typer.Option("open_interest_history", help="Override Coinglass endpoint path"),
     max_concurrency: int = typer.Option(10, help="Max concurrent API calls"),
 ) -> None:
     sym_list = [s.strip() for s in symbols.split(",") if s.strip()]
