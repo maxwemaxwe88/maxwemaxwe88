@@ -36,7 +36,13 @@ class CoinglassClient:
         self.settings = settings or get_settings()
         headers: dict[str, str] = {}
         if self.settings.api_key:
-            headers[self.settings.api_key_header] = self.settings.api_key
+            # Many Coinglass setups use `coinglassSecret`, but some versions/plans use different header names.
+            # If user explicitly sets COINGLASS_API_KEY_HEADER, honor only that.
+            if self.settings.api_key_headers and self.settings.api_key_header == "coinglassSecret":
+                for h in [x.strip() for x in self.settings.api_key_headers.split(",") if x.strip()]:
+                    headers[h] = self.settings.api_key
+            else:
+                headers[self.settings.api_key_header] = self.settings.api_key
 
         self._client = httpx.AsyncClient(
             base_url=self.settings.api_base_url.rstrip("/"),
@@ -98,29 +104,47 @@ class CoinglassClient:
         ]
 
         param_candidates: list[dict[str, Any]] = []
+        interval_candidates = list(dict.fromkeys([interval, interval.upper()]))
+        if interval.lower() in ("5m", "5min"):
+            interval_candidates += ["5min", "5m"]
+        if interval.lower() in ("1h", "60m"):
+            interval_candidates += ["60m", "1h", "1H"]
+        if interval.lower() in ("1d", "24h", "24H"):
+            interval_candidates += ["1d", "24h", "1D"]
+        interval_candidates = list(dict.fromkeys([x for x in interval_candidates if x]))
+
         # Variant A: symbol + exchange
-        p1: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
-        if exchange:
-            p1["exchange"] = exchange
-        param_candidates.append(p1)
+        for iv in interval_candidates:
+            p1: dict[str, Any] = {"symbol": symbol, "interval": iv, "limit": limit}
+            if exchange:
+                p1["exchange"] = exchange
+            param_candidates.append(p1)
 
-        # Variant B: symbol + exchangeName
-        p2: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
-        if exchange:
-            p2["exchangeName"] = exchange
-        param_candidates.append(p2)
+            # Variant B: symbol + exchangeName
+            p2: dict[str, Any] = {"symbol": symbol, "interval": iv, "limit": limit}
+            if exchange:
+                p2["exchangeName"] = exchange
+            param_candidates.append(p2)
 
-        # Variant C: coin + exchange
-        p3: dict[str, Any] = {"coin": symbol, "interval": interval, "limit": limit}
-        if exchange:
-            p3["exchange"] = exchange
-        param_candidates.append(p3)
+            # Variant C: coin + exchange
+            p3: dict[str, Any] = {"coin": symbol, "interval": iv, "limit": limit}
+            if exchange:
+                p3["exchange"] = exchange
+            param_candidates.append(p3)
 
-        # Variant D: coin + exchangeName
-        p4: dict[str, Any] = {"coin": symbol, "interval": interval, "limit": limit}
-        if exchange:
-            p4["exchangeName"] = exchange
-        param_candidates.append(p4)
+            # Variant D: coin + exchangeName
+            p4: dict[str, Any] = {"coin": symbol, "interval": iv, "limit": limit}
+            if exchange:
+                p4["exchangeName"] = exchange
+            param_candidates.append(p4)
+
+            # Variant E: symbol only (some endpoints don't accept exchange)
+            p5: dict[str, Any] = {"symbol": symbol, "interval": iv, "limit": limit}
+            param_candidates.append(p5)
+
+            # Variant F: coin only
+            p6: dict[str, Any] = {"coin": symbol, "interval": iv, "limit": limit}
+            param_candidates.append(p6)
 
         last_err: Exception | None = None
         for ep in endpoint_candidates:

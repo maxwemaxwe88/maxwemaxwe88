@@ -14,7 +14,11 @@ class Settings(BaseSettings):
 
     api_base_url: str = "https://open-api.coinglass.com/public/v2"
     api_key: str | None = None
+    # If you set COINGLASS_API_KEY_HEADER, only that header will be used.
     api_key_header: str = "coinglassSecret"
+    # Optional comma-separated list of headers to try (if api_key_header is default).
+    # Env: COINGLASS_API_KEY_HEADERS="coinglassSecret,CG-API-KEY,X-API-KEY"
+    api_key_headers: str | None = None
     timeout_s: float = 20.0
 
 
