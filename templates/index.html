@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Interest Screener - Coinglass</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-yellow: #d29922;
+            --accent-purple: #a371f7;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+        
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 12px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 12px 16px;
+            text-align: left;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: #2d333b;
+        }
+        
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+        
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .positive { color: var(--accent-green); }
+        .negative { color: var(--accent-red); }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #4393e6;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .btn-secondary:hover {
+            background: #2d333b;
+        }
+        
+        .btn-secondary.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--bg-tertiary);
+        }
+        
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--bg-tertiary);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tab-btn {
+            padding: 12px 20px;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+        
+        .tab-btn.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+        
+        .signal-bullish {
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .signal-bearish {
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--accent-red);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        input, select {
+            background: var(--bg-tertiary);
+            border: 1px solid #30363d;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .badge-new {
+            background: var(--accent-purple);
+            color: white;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="app" class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold flex items-center gap-3">
+                        <i class="fas fa-chart-line text-blue-500"></i>
+                        Open Interest Screener
+                    </h1>
+                    <p class="text-gray-500 mt-1">Real-time cryptocurrency derivatives data from Coinglass</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="lastUpdate" class="text-sm text-gray-500"></span>
+                    <button onclick="refreshData()" class="btn btn-primary">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card">
+                <div class="stat-label">Total Open Interest</div>
+                <div id="statTotalOI" class="stat-value text-blue-400">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Coins Tracked</div>
+                <div id="statCoins" class="stat-value text-purple-400">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Rising OI</div>
+                <div id="statRising" class="stat-value text-green-400">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Falling OI</div>
+                <div id="statFalling" class="stat-value text-red-400">-</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card mb-6">
+            <div class="flex border-b border-gray-700">
+                <button class="tab-btn active" onclick="switchTab('screener')">
+                    <i class="fas fa-table mr-2"></i> Screener
+                </button>
+                <button class="tab-btn" onclick="switchTab('gainers')">
+                    <i class="fas fa-arrow-up mr-2"></i> Top Gainers
+                </button>
+                <button class="tab-btn" onclick="switchTab('losers')">
+                    <i class="fas fa-arrow-down mr-2"></i> Top Losers
+                </button>
+                <button class="tab-btn" onclick="switchTab('unusual')">
+                    <i class="fas fa-bolt mr-2"></i> Unusual Activity
+                </button>
+                <button class="tab-btn" onclick="switchTab('divergence')">
+                    <i class="fas fa-exchange-alt mr-2"></i> Divergence
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div id="filtersContainer" class="card p-4 mb-6">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div>
+                    <label class="text-sm text-gray-500 block mb-1">Min OI (USD)</label>
+                    <select id="filterMinOI" onchange="applyFilters()" class="w-36">
+                        <option value="100000">$100K+</option>
+                        <option value="500000">$500K+</option>
+                        <option value="1000000" selected>$1M+</option>
+                        <option value="5000000">$5M+</option>
+                        <option value="10000000">$10M+</option>
+                        <option value="50000000">$50M+</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500 block mb-1">Sort By</label>
+                    <select id="filterSort" onchange="applyFilters()" class="w-36">
+                        <option value="oi">OI Value</option>
+                        <option value="oi_1h">OI Change 1h</option>
+                        <option value="oi_4h">OI Change 4h</option>
+                        <option value="oi_24h">OI Change 24h</option>
+                        <option value="price">Price</option>
+                        <option value="volume">Volume 24h</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500 block mb-1">Timeframe</label>
+                    <div class="flex gap-1">
+                        <button class="btn btn-secondary active" onclick="setTimeframe('1h', this)">1H</button>
+                        <button class="btn btn-secondary" onclick="setTimeframe('4h', this)">4H</button>
+                        <button class="btn btn-secondary" onclick="setTimeframe('24h', this)">24H</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500 block mb-1">Limit</label>
+                    <select id="filterLimit" onchange="applyFilters()" class="w-24">
+                        <option value="20">20</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div id="dataContainer" class="card">
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortBy('symbol')">Symbol <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('oi_value_usd')">OI (USD) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('oi_change_1h')">OI 1H % <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('oi_change_4h')">OI 4H % <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('oi_change_24h')">OI 24H % <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('price')">Price <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('price_change_24h')">Price 24H % <i class="fas fa-sort"></i></th>
+                            <th onclick="sortBy('volume_24h')">Volume 24H <i class="fas fa-sort"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="8" class="loading">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>Data provided by Coinglass API | Auto-refresh every 60 seconds</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentTab = 'screener';
+        let currentTimeframe = '1h';
+        let currentData = [];
+        let sortColumn = 'oi_value_usd';
+        let sortOrder = 'desc';
+
+        // Format functions
+        function formatUSD(value) {
+            if (!value || value === 0) return '-';
+            if (value >= 1e9) return '$' + (value / 1e9).toFixed(2) + 'B';
+            if (value >= 1e6) return '$' + (value / 1e6).toFixed(2) + 'M';
+            if (value >= 1e3) return '$' + (value / 1e3).toFixed(2) + 'K';
+            return '$' + value.toFixed(2);
+        }
+
+        function formatPrice(value) {
+            if (!value) return '-';
+            if (value < 0.0001) return '$' + value.toFixed(8);
+            if (value < 1) return '$' + value.toFixed(6);
+            if (value < 100) return '$' + value.toFixed(4);
+            return '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function formatChange(value) {
+            if (value === undefined || value === null) return '-';
+            const formatted = value.toFixed(2) + '%';
+            const className = value > 0 ? 'positive' : value < 0 ? 'negative' : '';
+            const prefix = value > 0 ? '+' : '';
+            return `<span class="${className}">${prefix}${formatted}</span>`;
+        }
+
+        // API calls
+        async function fetchData(endpoint, params = {}) {
+            const url = new URL(endpoint, window.location.origin);
+            Object.keys(params).forEach(key => {
+                if (params[key] !== null && params[key] !== undefined) {
+                    url.searchParams.append(key, params[key]);
+                }
+            });
+            
+            try {
+                const response = await fetch(url);
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                return null;
+            }
+        }
+
+        async function loadScreenerData() {
+            const minOI = document.getElementById('filterMinOI').value;
+            const sort = document.getElementById('filterSort').value;
+            const limit = document.getElementById('filterLimit').value;
+            
+            const data = await fetchData('/api/oi', {
+                limit: limit,
+                sort: sort,
+                order: sortOrder,
+                min_oi: minOI
+            });
+            
+            if (data && data.data) {
+                currentData = data.data;
+                renderTable(data.data);
+                updateLastUpdate();
+            }
+        }
+
+        async function loadGainersData() {
+            const minOI = document.getElementById('filterMinOI').value;
+            const limit = document.getElementById('filterLimit').value;
+            
+            const data = await fetchData('/api/gainers', {
+                timeframe: currentTimeframe,
+                limit: limit,
+                min_oi: minOI
+            });
+            
+            if (data && data.data) {
+                currentData = data.data;
+                renderTable(data.data);
+                updateLastUpdate();
+            }
+        }
+
+        async function loadLosersData() {
+            const minOI = document.getElementById('filterMinOI').value;
+            const limit = document.getElementById('filterLimit').value;
+            
+            const data = await fetchData('/api/losers', {
+                timeframe: currentTimeframe,
+                limit: limit,
+                min_oi: minOI
+            });
+            
+            if (data && data.data) {
+                currentData = data.data;
+                renderTable(data.data);
+                updateLastUpdate();
+            }
+        }
+
+        async function loadUnusualData() {
+            const minOI = document.getElementById('filterMinOI').value;
+            const limit = document.getElementById('filterLimit').value;
+            
+            const data = await fetchData('/api/unusual', {
+                threshold: 5.0,
+                limit: limit,
+                min_oi: minOI
+            });
+            
+            if (data && data.data) {
+                currentData = data.data;
+                renderTable(data.data);
+                updateLastUpdate();
+            }
+        }
+
+        async function loadDivergenceData() {
+            const minOI = document.getElementById('filterMinOI').value;
+            const limit = document.getElementById('filterLimit').value;
+            
+            const data = await fetchData('/api/divergence', {
+                limit: limit,
+                min_oi: minOI
+            });
+            
+            if (data && data.data) {
+                currentData = data.data;
+                renderDivergenceTable(data.data);
+                updateLastUpdate();
+            }
+        }
+
+        async function loadSummary() {
+            const data = await fetchData('/api/summary');
+            
+            if (data) {
+                document.getElementById('statTotalOI').textContent = formatUSD(data.total_oi_usd);
+                document.getElementById('statCoins').textContent = data.total_coins || '-';
+                document.getElementById('statRising').textContent = data.coins_with_rising_oi || '-';
+                document.getElementById('statFalling').textContent = data.coins_with_falling_oi || '-';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-gray-500 py-8">
+                            <i class="fas fa-inbox text-4xl mb-4 block"></i>
+                            No data available
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = data.map(row => `
+                <tr>
+                    <td class="font-semibold">${row.symbol || '-'}</td>
+                    <td>${formatUSD(row.oi_value_usd)}</td>
+                    <td>${formatChange(row.oi_change_1h)}</td>
+                    <td>${formatChange(row.oi_change_4h)}</td>
+                    <td>${formatChange(row.oi_change_24h)}</td>
+                    <td>${formatPrice(row.price)}</td>
+                    <td>${formatChange(row.price_change_24h)}</td>
+                    <td>${formatUSD(row.volume_24h)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderDivergenceTable(data) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-gray-500 py-8">
+                            <i class="fas fa-inbox text-4xl mb-4 block"></i>
+                            No divergence signals detected
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = data.map(row => {
+                const signalClass = row.signal === 'BULLISH' ? 'signal-bullish' : 'signal-bearish';
+                const signalIcon = row.signal === 'BULLISH' ? '🟢' : '🔴';
+                return `
+                    <tr>
+                        <td class="font-semibold">
+                            ${row.symbol || '-'}
+                            <span class="${signalClass} ml-2">${signalIcon} ${row.signal}</span>
+                        </td>
+                        <td>${formatUSD(row.oi_value_usd)}</td>
+                        <td>${formatChange(row.oi_change_1h)}</td>
+                        <td>${formatChange(row.oi_change_4h)}</td>
+                        <td>${formatChange(row.oi_change_24h)}</td>
+                        <td>${formatPrice(row.price)}</td>
+                        <td>${formatChange(row.price_change_24h)}</td>
+                        <td>${formatUSD(row.volume_24h)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                `Last update: ${now.toLocaleTimeString()}`;
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.tab-btn').classList.add('active');
+            
+            // Load appropriate data
+            refreshData();
+        }
+
+        function setTimeframe(tf, btn) {
+            currentTimeframe = tf;
+            
+            // Update buttons
+            btn.parentElement.querySelectorAll('.btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            
+            if (currentTab === 'gainers' || currentTab === 'losers') {
+                refreshData();
+            }
+        }
+
+        function applyFilters() {
+            refreshData();
+        }
+
+        function sortBy(column) {
+            if (sortColumn === column) {
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortOrder = 'desc';
+            }
+            
+            // Client-side sort
+            if (currentData.length > 0) {
+                currentData.sort((a, b) => {
+                    let valA = a[column];
+                    let valB = b[column];
+                    
+                    if (typeof valA === 'string') {
+                        return sortOrder === 'asc' 
+                            ? valA.localeCompare(valB)
+                            : valB.localeCompare(valA);
+                    }
+                    
+                    return sortOrder === 'asc' ? valA - valB : valB - valA;
+                });
+                
+                if (currentTab === 'divergence') {
+                    renderDivergenceTable(currentData);
+                } else {
+                    renderTable(currentData);
+                }
+            }
+        }
+
+        function refreshData() {
+            // Show loading
+            document.getElementById('tableBody').innerHTML = `
+                <tr>
+                    <td colspan="8" class="loading">
+                        <div class="spinner"></div>
+                    </td>
+                </tr>
+            `;
+            
+            // Load data based on current tab
+            switch (currentTab) {
+                case 'screener':
+                    loadScreenerData();
+                    break;
+                case 'gainers':
+                    loadGainersData();
+                    break;
+                case 'losers':
+                    loadLosersData();
+                    break;
+                case 'unusual':
+                    loadUnusualData();
+                    break;
+                case 'divergence':
+                    loadDivergenceData();
+                    break;
+            }
+            
+            loadSummary();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshData();
+            
+            // Auto-refresh every 60 seconds
+            setInterval(refreshData, 60000);
+        });
+    </script>
+</body>
+</html>
