@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
+import subprocess
 from typing import Optional
 
 import typer
@@ -92,4 +94,35 @@ def serve(
     import uvicorn
 
     uvicorn.run("coinglass_oi_screener.api:app", host=host, port=port, reload=False)
+
+
+@app.command("ui")
+def ui(
+    host: str = typer.Option("0.0.0.0", help="Bind host for Streamlit"),
+    port: int = typer.Option(8501, help="Bind port for Streamlit"),
+) -> None:
+    """
+    Run Streamlit UI (visual client).
+    """
+    streamlit = shutil.which("streamlit")
+    if not streamlit:
+        console.print(
+            "[red]streamlit not found[/red]. Install deps first: python3 -m pip install -e ."
+        )
+        raise typer.Exit(code=2)
+
+    # `python -m streamlit` is more portable than relying on console script.
+    cmd = [
+        "python3",
+        "-m",
+        "streamlit",
+        "run",
+        "-q",
+        "src/coinglass_oi_screener/ui_streamlit.py",
+        "--server.address",
+        host,
+        "--server.port",
+        str(port),
+    ]
+    raise typer.Exit(code=subprocess.call(cmd))
 

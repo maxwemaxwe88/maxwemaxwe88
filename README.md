@@ -34,6 +34,14 @@ coinglass-oi screen --symbols BTC,ETH,SOL --interval 1h --limit 20
 coinglass-oi serve --port 8000
 ```
 
+5) Визуальный клиент (UI в браузере):
+
+```bash
+coinglass-oi ui --port 8501
+```
+
+Открыть в браузере: `http://localhost:8501`
+
 Пример запроса:
 
 ```bash
