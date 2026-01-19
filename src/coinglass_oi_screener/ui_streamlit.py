@@ -6,8 +6,14 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
-from .coinglass_client import CoinglassClient, CoinglassError
-from .screener import filter_and_sort, screen_open_interest
+try:
+    # When run as a package module.
+    from .coinglass_client import CoinglassClient, CoinglassError
+    from .screener import filter_and_sort, screen_open_interest
+except ImportError:  # pragma: no cover
+    # When executed by `streamlit run path/to/ui_streamlit.py` (no parent package).
+    from coinglass_oi_screener.coinglass_client import CoinglassClient, CoinglassError
+    from coinglass_oi_screener.screener import filter_and_sort, screen_open_interest
 
 
 def _run_async(coro):
