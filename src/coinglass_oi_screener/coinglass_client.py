@@ -9,8 +9,30 @@ import httpx
 from .config import Settings, get_settings
 
 
+@dataclass(frozen=True)
 class CoinglassError(RuntimeError):
-    pass
+    """
+    Structured Coinglass error to preserve diagnostics.
+    """
+
+    message: str
+    http_status: int | None = None
+    path: str | None = None
+    code: str | None = None
+    msg: str | None = None
+    body: str | None = None
+
+    def __str__(self) -> str:
+        parts = [self.message]
+        if self.http_status is not None:
+            parts.append(f"http={self.http_status}")
+        if self.path:
+            parts.append(f"path={self.path}")
+        if self.code is not None:
+            parts.append(f"code={self.code}")
+        if self.msg:
+            parts.append(f"msg={self.msg}")
+        return " | ".join(parts)
 
 
 @dataclass(frozen=True)
@@ -66,7 +88,12 @@ class CoinglassClient:
             raise CoinglassError(f"Coinglass HTTP error: {e}") from e
 
         if r.status_code >= 400:
-            raise CoinglassError(f"Coinglass bad status {r.status_code}: {r.text}")
+            raise CoinglassError(
+                "Coinglass bad status",
+                http_status=r.status_code,
+                path=str(r.request.url),
+                body=r.text[:2000],
+            )
 
         try:
             payload = r.json()
@@ -76,8 +103,22 @@ class CoinglassClient:
         resp = CoinglassResponse(raw=payload if isinstance(payload, dict) else {"data": payload})
         # Coinglass typically uses code "0" for success; be permissive otherwise.
         if resp.code not in (None, 0, "0", "200", 200):
-            raise CoinglassError(f"Coinglass API error code={resp.code} msg={resp.msg}")
+            raise CoinglassError(
+                "Coinglass API error",
+                http_status=r.status_code,
+                path=str(r.request.url),
+                code=str(resp.code) if resp.code is not None else None,
+                msg=resp.msg,
+                body=r.text[:2000],
+            )
         return resp
+
+    async def probe(self, endpoint_path: str = "open_interest_history") -> dict[str, Any]:
+        """
+        Lightweight probe to validate auth/header and basic API reachability.
+        """
+        resp = await self.get(endpoint_path, params={"limit": 1})
+        return resp.raw
 
     async def get_open_interest_history(
         self,
@@ -154,12 +195,31 @@ class CoinglassClient:
                 try:
                     return (await self.get(ep, params=params)).data
                 except CoinglassError as e:
+                    # If auth/key/header is wrong, Coinglass often returns code 30001/30002, etc.
+                    # Do NOT continue to other endpoints, because it will hide the real cause
+                    # behind unrelated 500s from deprecated/broken paths.
+                    if _is_auth_error(e):
+                        raise e
                     last_err = e
                     continue
 
         raise CoinglassError(
-            f"Coinglass OI history failed for symbol={symbol} interval={interval} exchange={exchange}: {last_err}"
+            f"Coinglass OI history failed for symbol={symbol} interval={interval} exchange={exchange}",
+            body=str(last_err) if last_err else None,
         ) from last_err
+
+
+def _is_auth_error(err: CoinglassError) -> bool:
+    code = (err.code or "").strip()
+    msg = (err.msg or "").lower()
+    # Observed: 30001 "API key missing."
+    if code in {"30001", "30002", "30003", "30004"}:
+        return True
+    if "api key" in msg or "secret" in msg or "signature" in msg or "unauthorized" in msg:
+        return True
+    if err.http_status in {401, 403}:
+        return True
+    return False
 
 
 async def gather_limited(

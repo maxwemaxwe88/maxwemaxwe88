@@ -124,3 +124,33 @@ def ui(
     ]
     raise typer.Exit(code=subprocess.call(cmd))
 
+
+@app.command("diagnose")
+def diagnose() -> None:
+    """
+    Diagnose Coinglass auth/config quickly.
+
+    Prints the response from a lightweight probe endpoint so you can see if
+    the API key is being accepted (common issue: wrong header name).
+    """
+    async def _run():
+        client = CoinglassClient()
+        try:
+            return await client.probe(endpoint_path="open_interest_history")
+        finally:
+            await client.aclose()
+
+    try:
+        data = asyncio.run(_run())
+        console.print("[green]Coinglass probe OK[/green]")
+        console.print(data)
+    except CoinglassError as e:
+        console.print("[red]Coinglass probe failed[/red]")
+        console.print(str(e))
+        console.print(
+            "Try setting header name(s): "
+            "COINGLASS_API_KEY_HEADER or COINGLASS_API_KEY_HEADERS "
+            "(e.g. coinglassSecret,CG-API-KEY,X-API-KEY)"
+        )
+        raise typer.Exit(code=2)
+
