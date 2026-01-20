@@ -16,21 +16,28 @@ async def health() -> dict[str, str]:
 
 @app.get("/screener")
 async def screener(
-    symbols: str = Query(..., description="Comma-separated symbols, e.g. BTC,ETH,SOL"),
+    symbols: str | None = Query(None, description="Comma-separated symbols, e.g. BTC,ETH,SOL (optional with all_futures=true)"),
     interval: str = Query("1h", description="Interval: 5m/1h/1d (depends on exchange)"),
     exchange: str = Query("OKX", description="Exchange: OKX, Binance or Bybit"),
+    all_futures: bool = Query(False, description="Scan all futures symbols for the exchange"),
+    max_symbols: int = Query(200, ge=10, le=2000, description="Limit symbols when all_futures=true"),
     min_change_pct: float | None = Query(None, description="Min OI change %"),
     max_change_pct: float | None = Query(None, description="Max OI change %"),
     limit: int = Query(50, ge=1, le=500),
     endpoint_path: str = Query("open_interest_history", description="Ignored for exchange mode"),
     max_concurrency: int = Query(10, ge=1, le=50),
 ) -> dict:
-    sym_list = [s.strip() for s in symbols.split(",") if s.strip()]
-    if not sym_list:
-        raise HTTPException(status_code=400, detail="No symbols provided")
+    sym_list: list[str] = []
+    if symbols:
+        sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
     client = ExchangeOIClient()
     try:
+        if all_futures:
+            uni = await client.list_futures_symbols(exchange=exchange)
+            sym_list = uni[: max_symbols]
+        if not sym_list:
+            raise HTTPException(status_code=400, detail="No symbols to scan (symbols empty and all_futures=false?)")
         rows = await screen_open_interest(
             client,
             symbols=sym_list,

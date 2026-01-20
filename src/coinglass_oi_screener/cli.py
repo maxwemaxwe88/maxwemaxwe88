@@ -44,25 +44,32 @@ def _render_table(rows) -> None:
 
 @app.command("screen")
 def screen(
-    symbols: str = typer.Option(..., help="Comma-separated symbols, e.g. BTC,ETH,SOL"),
+    symbols: str = typer.Option("", help="Comma-separated symbols, e.g. BTC,ETH,SOL (ignored with --all-futures)"),
     interval: str = typer.Option("1h", help="Interval for history points (depends on Coinglass)"),
     exchange: Optional[str] = typer.Option("OKX", help="Exchange: OKX, Binance or Bybit"),
+    all_futures: bool = typer.Option(False, help="Scan all futures symbols for the exchange"),
+    max_symbols: int = typer.Option(200, help="Limit symbols when using --all-futures"),
     min_change_pct: Optional[float] = typer.Option(None, help="Min OI change % filter"),
     max_change_pct: Optional[float] = typer.Option(None, help="Max OI change % filter"),
     limit: int = typer.Option(50, help="Limit rows after sorting"),
     endpoint_path: str = typer.Option("open_interest_history", help="Override Coinglass endpoint path"),
     max_concurrency: int = typer.Option(10, help="Max concurrent API calls"),
 ) -> None:
-    sym_list = [s.strip() for s in symbols.split(",") if s.strip()]
-    if not sym_list:
-        raise typer.BadParameter("No symbols provided")
+    sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
     async def _run():
         client = ExchangeOIClient()
         try:
+            if all_futures:
+                uni = await client.list_futures_symbols(exchange=exchange or "OKX")
+                sym_list2 = uni[: max(10, max_symbols)]
+            else:
+                sym_list2 = sym_list
+            if not sym_list2:
+                raise ExchangeError("No symbols to scan (check --symbols or --all-futures).")
             rows = await screen_open_interest(
                 client,
-                symbols=sym_list,
+                symbols=sym_list2,
                 interval=interval,
                 exchange=exchange,
                 endpoint_path=endpoint_path,

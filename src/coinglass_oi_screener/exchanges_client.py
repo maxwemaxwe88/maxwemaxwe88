@@ -48,6 +48,23 @@ class ExchangeOIClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
+    async def list_futures_symbols(self, exchange: str, quote: str = "USDT") -> list[str]:
+        """
+        Return base symbols (coins) available on the exchange's USDT linear futures.
+
+        - OKX: returns base coin for *-USDT-SWAP instruments (perpetual swaps)
+        - Binance: returns baseAsset for USDT perpetual futures
+        - Bybit: returns baseCoin for USDT linear instruments
+        """
+        ex = (exchange or "").strip().lower()
+        if ex in {"okx", "okex"}:
+            return await self._okx_list_usdt_swap_coins(quote=quote)
+        if ex in {"binance", "binance futures", "binancefutures"}:
+            return await self._binance_list_usdt_perp_coins(quote=quote)
+        if ex in {"bybit"}:
+            return await self._bybit_list_usdt_linear_coins(quote=quote)
+        raise ExchangeError(f"Unsupported exchange '{exchange}' for listing futures.")
+
     async def get_open_interest_history(
         self,
         symbol: str,
@@ -104,6 +121,32 @@ class ExchangeOIClient:
             )
         return out
 
+    async def _binance_list_usdt_perp_coins(self, quote: str = "USDT") -> list[str]:
+        base = "https://fapi.binance.com"
+        url = f"{base}/fapi/v1/exchangeInfo"
+        r = await self._client.get(url)
+        if r.status_code >= 400:
+            raise ExchangeError(f"Binance exchangeInfo status {r.status_code}: {r.text[:300]}")
+        payload = r.json()
+        symbols = payload.get("symbols") if isinstance(payload, dict) else None
+        if not isinstance(symbols, list):
+            raise ExchangeError(f"Binance unexpected exchangeInfo: {str(payload)[:300]}")
+
+        out: set[str] = set()
+        for s in symbols:
+            if not isinstance(s, dict):
+                continue
+            if s.get("status") != "TRADING":
+                continue
+            if s.get("contractType") != "PERPETUAL":
+                continue
+            if (s.get("quoteAsset") or "").upper() != quote.upper():
+                continue
+            base_asset = (s.get("baseAsset") or "").upper()
+            if base_asset:
+                out.add(base_asset)
+        return sorted(out)
+
     async def _bybit_open_interest_hist(self, symbol: str, interval: str, limit: int) -> list[dict[str, Any]]:
         """
         Bybit v5 open interest.
@@ -156,6 +199,43 @@ class ExchangeOIClient:
             )
         return out
 
+    async def _bybit_list_usdt_linear_coins(self, quote: str = "USDT") -> list[str]:
+        base = "https://api.bybit.com"
+        url = f"{base}/v5/market/instruments-info"
+        cursor: str | None = None
+        out: set[str] = set()
+        # paginate a few pages defensively
+        for _ in range(10):
+            params: dict[str, Any] = {"category": "linear", "limit": 1000}
+            if cursor:
+                params["cursor"] = cursor
+            r = await self._client.get(url, params=params)
+            if r.status_code >= 400:
+                raise ExchangeError(f"Bybit instruments status {r.status_code}: {r.text[:300]}")
+            payload = r.json()
+            if not isinstance(payload, dict) or payload.get("retCode") not in (0, "0", None):
+                raise ExchangeError(f"Bybit instruments error: {payload.get('retCode')} {payload.get('retMsg')}")
+            result = payload.get("result") or {}
+            items = result.get("list") or []
+            if not isinstance(items, list):
+                raise ExchangeError(f"Bybit instruments unexpected: {str(payload)[:300]}")
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                if (it.get("quoteCoin") or "").upper() != quote.upper():
+                    continue
+                # "status" can be "Trading"
+                st = (it.get("status") or "").lower()
+                if st and st not in {"trading"}:
+                    continue
+                base_coin = (it.get("baseCoin") or "").upper()
+                if base_coin:
+                    out.add(base_coin)
+            cursor = result.get("nextPageCursor") or None
+            if not cursor:
+                break
+        return sorted(out)
+
     async def _okx_open_interest_hist(self, symbol: str, interval: str, limit: int) -> list[dict[str, Any]]:
         """
         OKX Rubik open interest volume endpoint.
@@ -193,4 +273,32 @@ class ExchangeOIClient:
                 ts_i = None
             out.append({"time": ts_i, "openInterest": _as_float(row[1])})
         return out
+
+    async def _okx_list_usdt_swap_coins(self, quote: str = "USDT") -> list[str]:
+        base = "https://www.okx.com"
+        url = f"{base}/api/v5/public/instruments"
+        # instType supports SWAP/FUTURES; we use SWAP because it's the closest to USDT perpetual futures
+        params = {"instType": "SWAP"}
+        r = await self._client.get(url, params=params)
+        if r.status_code >= 400:
+            raise ExchangeError(f"OKX instruments status {r.status_code}: {r.text[:300]}")
+        payload = r.json()
+        if not isinstance(payload, dict) or payload.get("code") != "0":
+            raise ExchangeError(f"OKX instruments error: {str(payload)[:300]}")
+        data = payload.get("data") or []
+        if not isinstance(data, list):
+            raise ExchangeError(f"OKX instruments unexpected: {str(payload)[:300]}")
+
+        suffix = f"-{quote.upper()}-SWAP"
+        out: set[str] = set()
+        for it in data:
+            if not isinstance(it, dict):
+                continue
+            inst_id = (it.get("instId") or "").upper()
+            if not inst_id.endswith(suffix):
+                continue
+            base_coin = inst_id.split("-")[0].strip().upper()
+            if base_coin:
+                out.add(base_coin)
+        return sorted(out)
 

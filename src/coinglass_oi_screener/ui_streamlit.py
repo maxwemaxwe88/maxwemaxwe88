@@ -71,7 +71,17 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("Общие параметры")
-        symbols_raw = st.text_input("Symbols (через запятую)", value="BTC,ETH,SOL")
+        all_futures = st.checkbox("All futures (scan all futures symbols)", value=True)
+        symbols_raw = st.text_input("Symbols (через запятую)", value="BTC,ETH,SOL", disabled=all_futures)
+        futures_search = st.text_input("Futures filter (contains)", value="", disabled=not all_futures)
+        max_symbols = st.slider(
+            "Max symbols to scan (performance)",
+            min_value=10,
+            max_value=1000,
+            value=200,
+            step=10,
+            disabled=not all_futures,
+        )
         st.caption("Источник данных: публичные API бирж (без Coinglass).")
         endpoint_path = st.text_input("Endpoint path (ignored for exchanges)", value="open_interest_history")
         max_concurrency = st.slider("Concurrency", min_value=1, max_value=50, value=10)
@@ -80,9 +90,20 @@ def main() -> None:
 
     symbols = [s.strip().upper() for s in symbols_raw.split(",") if s.strip()]
 
-    if not symbols:
+    if not all_futures and not symbols:
         st.warning("Укажите хотя бы один тикер (например: BTC,ETH).")
         return
+
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def _cached_universe(exchange: str) -> list[str]:
+        async def _run():
+            c = ExchangeOIClient()
+            try:
+                return await c.list_futures_symbols(exchange=exchange)
+            finally:
+                await c.aclose()
+
+        return _run_async(_run())
 
     @st.cache_data(ttl=60, show_spinner=False)
     def _cached_screen(
@@ -144,11 +165,25 @@ def main() -> None:
 
             sort_by = "oi_change_pct" if sort_choice == "Δ%" else "oi_change"
 
+            if all_futures:
+                try:
+                    uni = _cached_universe(exchange_val or "OKX")
+                except Exception as e:
+                    st.error(f"Failed to list futures symbols: {e}")
+                    return
+                q = futures_search.strip().upper()
+                if q:
+                    uni = [s for s in uni if q in s]
+                uni = uni[:max_symbols]
+                symbols_for_tile = uni
+            else:
+                symbols_for_tile = symbols
+
             # If user didn't click "Run all", still show last results if any (cache hit on rerun).
             if run_all:
                 try:
                     data = _cached_screen(
-                        symbols_tuple=tuple(symbols),
+                        symbols_tuple=tuple(symbols_for_tile),
                         interval=interval_val,
                         exchange=exchange_val,
                         endpoint_path=endpoint_path,
