@@ -8,11 +8,11 @@ import pandas as pd
 
 try:
     # When run as a package module.
-    from .coinglass_client import CoinglassClient, CoinglassError
+    from .exchanges_client import ExchangeOIClient, ExchangeError
     from .screener import filter_and_sort, screen_open_interest
 except ImportError:  # pragma: no cover
     # When executed by `streamlit run path/to/ui_streamlit.py` (no parent package).
-    from coinglass_oi_screener.coinglass_client import CoinglassClient, CoinglassError
+    from coinglass_oi_screener.exchanges_client import ExchangeOIClient, ExchangeError
     from coinglass_oi_screener.screener import filter_and_sort, screen_open_interest
 
 
@@ -33,7 +33,7 @@ async def _screen(
     descending: bool,
     sort_by: str,
 ):
-    client = CoinglassClient()
+    client = ExchangeOIClient()
     try:
         rows = await screen_open_interest(
             client,
@@ -64,14 +64,16 @@ def main() -> None:
         "Внутри таблица на 3 колонки, сортировка — кликом по заголовкам."
     )
 
-    exchanges = ["Binance", "OKX", "Bybit", "Bitget", "Gate", "Huobi", "Deribit", "Kraken", "Coinbase"]
+    # Exchanges we support in code. Note: some endpoints may be geo-blocked depending on your location.
+    exchanges = ["OKX", "Binance", "Bybit"]
     timeframes = ["5m", "1h", "24h"]
     timeframe_to_interval = {"5m": "5m", "1h": "1h", "24h": "1d"}  # Coinglass чаще использует 1d
 
     with st.sidebar:
         st.subheader("Общие параметры")
         symbols_raw = st.text_input("Symbols (через запятую)", value="BTC,ETH,SOL")
-        endpoint_path = st.text_input("Endpoint path", value="open_interest_history")
+        st.caption("Источник данных: публичные API бирж (без Coinglass).")
+        endpoint_path = st.text_input("Endpoint path (ignored for exchanges)", value="open_interest_history")
         max_concurrency = st.slider("Concurrency", min_value=1, max_value=50, value=10)
         top_n = st.slider("Rows per window", min_value=5, max_value=200, value=30)
         run_all = st.button("Run all windows", type="primary")
@@ -155,8 +157,8 @@ def main() -> None:
                         descending=desc,
                         sort_by=sort_by,
                     )
-                except CoinglassError as e:
-                    st.error(f"Coinglass error: {e}")
+                except ExchangeError as e:
+                    st.error(f"Exchange error: {e}")
                     return
                 except Exception as e:
                     st.exception(e)
@@ -197,8 +199,7 @@ def main() -> None:
     st.markdown(
         """
 **Переменные окружения**
-- `COINGLASS_API_KEY` — ключ Coinglass
-- `COINGLASS_API_KEY_HEADER` — имя заголовка (по умолчанию `coinglassSecret`)
+- (не требуется) — используем публичные API бирж
         """.strip()
     )
 

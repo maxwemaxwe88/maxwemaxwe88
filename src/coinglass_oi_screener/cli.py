@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from .coinglass_client import CoinglassClient, CoinglassError
+from .exchanges_client import ExchangeError, ExchangeOIClient
 from .screener import filter_and_sort, screen_open_interest
 
 
@@ -46,7 +46,7 @@ def _render_table(rows) -> None:
 def screen(
     symbols: str = typer.Option(..., help="Comma-separated symbols, e.g. BTC,ETH,SOL"),
     interval: str = typer.Option("1h", help="Interval for history points (depends on Coinglass)"),
-    exchange: Optional[str] = typer.Option(None, help="Optional exchange, e.g. Binance"),
+    exchange: Optional[str] = typer.Option("OKX", help="Exchange: OKX, Binance or Bybit"),
     min_change_pct: Optional[float] = typer.Option(None, help="Min OI change % filter"),
     max_change_pct: Optional[float] = typer.Option(None, help="Max OI change % filter"),
     limit: int = typer.Option(50, help="Limit rows after sorting"),
@@ -58,7 +58,7 @@ def screen(
         raise typer.BadParameter("No symbols provided")
 
     async def _run():
-        client = CoinglassClient()
+        client = ExchangeOIClient()
         try:
             rows = await screen_open_interest(
                 client,
@@ -80,8 +80,8 @@ def screen(
 
     try:
         asyncio.run(_run())
-    except CoinglassError as e:
-        console.print(f"[red]Coinglass error:[/red] {e}")
+    except ExchangeError as e:
+        console.print(f"[red]Exchange error:[/red] {e}")
         raise typer.Exit(code=2)
 
 
@@ -128,29 +128,23 @@ def ui(
 @app.command("diagnose")
 def diagnose() -> None:
     """
-    Diagnose Coinglass auth/config quickly.
-
-    Prints the response from a lightweight probe endpoint so you can see if
-    the API key is being accepted (common issue: wrong header name).
+    Diagnose exchange OI endpoints quickly (no API key).
     """
     async def _run():
-        client = CoinglassClient()
+        client = ExchangeOIClient()
         try:
-            return await client.probe(endpoint_path="open_interest_history")
+            # Try a couple of common pairs quickly
+            okx = await client.get_open_interest_history(symbol="BTC", interval="1h", exchange="OKX", limit=2)
+            return {"okx": okx[:2] if isinstance(okx, list) else okx}
         finally:
             await client.aclose()
 
     try:
         data = asyncio.run(_run())
-        console.print("[green]Coinglass probe OK[/green]")
+        console.print("[green]Exchange probe OK[/green]")
         console.print(data)
-    except CoinglassError as e:
-        console.print("[red]Coinglass probe failed[/red]")
+    except ExchangeError as e:
+        console.print("[red]Exchange probe failed[/red]")
         console.print(str(e))
-        console.print(
-            "Try setting header name(s): "
-            "COINGLASS_API_KEY_HEADER or COINGLASS_API_KEY_HEADERS "
-            "(e.g. coinglassSecret,CG-API-KEY,X-API-KEY)"
-        )
         raise typer.Exit(code=2)
 

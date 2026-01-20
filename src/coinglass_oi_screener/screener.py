@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from .coinglass_client import CoinglassClient, gather_limited
+from .coinglass_client import gather_limited
 
 
 @dataclass(frozen=True)
@@ -125,7 +125,7 @@ def compute_oi_change(
 
 
 async def screen_open_interest(
-    client: CoinglassClient,
+    client: Any,
     *,
     symbols: Iterable[str],
     interval: str = "1h",
