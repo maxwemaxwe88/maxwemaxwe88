@@ -213,9 +213,13 @@ def _is_auth_error(err: CoinglassError) -> bool:
     code = (err.code or "").strip()
     msg = (err.msg or "").lower()
     # Observed: 30001 "API key missing."
-    if code in {"30001", "30002", "30003", "30004"}:
+    # Observed: 40001 "Upgrade plan"
+    # Treat as fatal as well (otherwise we hide it behind unrelated 500s from deprecated paths).
+    if code in {"30001", "30002", "30003", "30004", "40001"}:
         return True
     if "api key" in msg or "secret" in msg or "signature" in msg or "unauthorized" in msg:
+        return True
+    if "upgrade plan" in msg or "upgrade" in msg:
         return True
     if err.http_status in {401, 403}:
         return True
